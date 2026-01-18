@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FluoTrack - Microplastic Detection Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+    <style>
+        /* Base reset */
+        * { box-sizing: border-box; margin:0; padding:0 }
+        html, body { height:100% }
+
+        /* Background + container (glass) */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: radial-gradient(1000px 400px at 10% 8%, rgba(36,58,108,0.55), transparent 18%),
+                        radial-gradient(800px 300px at 92% 92%, rgba(6,23,55,0.55), transparent 18%),
+                        linear-gradient(180deg,#021026 0%, #051428 100%);
+            color: #dff3ff;
+            -webkit-font-smoothing:antialiased;
+            padding: 28px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+            border: 1px solid rgba(255,255,255,0.04);
+            border-radius: 14px;
+            padding: 22px;
+            backdrop-filter: blur(8px) saturate(120%);
+            box-shadow: 0 12px 40px rgba(2,10,30,0.6), inset 0 1px 0 rgba(255,255,255,0.02);
+        }
+
+        /* Header */
+        .header { display:flex; align-items:center; justify-content:space-between; gap:18px; margin-bottom:22px }
+        .header-title { display:flex; align-items:center; gap:14px }
+        .header-title h1 { font-size:1.9rem; font-weight:800; color:#e6f6ff; letter-spacing:0.4px }
+        .header-title .icon { color:#9fb8ff; font-size:1.8rem; filter:drop-shadow(0 8px 26px rgba(79,111,232,0.12)) }
+
+        .header-actions { display:flex; gap:12px }
+
+        /* Buttons */
+        .btn { padding:10px 18px; border:0; border-radius:10px; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:10px }
+        .btn-primary { background:linear-gradient(90deg,#4867e6,#6d5ee0); color:white; box-shadow:0 8px 30px rgba(75,95,220,0.16); border:1px solid rgba(255,255,255,0.03) }
+        .btn-primary:hover { transform:translateY(-3px) }
+        .btn-secondary { background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); color:#d8efff; border:1px solid rgba(255,255,255,0.04) }
+        .btn-success { background:linear-gradient(90deg,#17b287,#3dd89e); color:#022216 }
+        .btn-danger { background:linear-gradient(90deg,#ff6b6b,#ff8a80); color:#fff }
+        .btn-sm { padding:6px 12px; font-size:13px }
+
+        /* Stats grid */
+        .stats-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:18px; margin-bottom:26px }
+        .stat-card {
+            background: linear-gradient(180deg, rgba(255,255,255,0.025), rgba(255,255,255,0.01));
+            border-radius:12px; padding:18px; position:relative; overflow:hidden;
+            box-shadow: 0 8px 30px rgba(3,10,25,0.6); border:1px solid rgba(255,255,255,0.03);
+            transition: transform .22s ease, box-shadow .22s ease;
+        }
+        .stat-card:hover { transform:translateY(-6px); box-shadow:0 22px 50px rgba(6,25,70,0.6) }
+        .stat-icon { font-size:1.6rem; color:#9fb8ff; margin-bottom:8px }
+        .stat-label { color:#bcd6ff; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:1px }
+        .stat-value { font-size:2rem; font-weight:800; color:#eaf4ff; margin:8px 0 }
+        .stat-subtitle { font-size:12px; color:#9fb8ff }
+        .stat-card.critical .stat-icon { color:#ff8a80 }
+        .stat-card.high .stat-icon { color:#ffb26b }
+        .stat-card.medium .stat-icon { color:#ffd57a }
+        .stat-card.info .stat-icon { color:#9fb8ff }
+
+        /* Layout */
+        .content-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(440px,1fr)); gap:18px; margin-bottom:26px }
+        .content-grid.full { grid-template-columns:1fr }
+
+        .chart-container { background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); border-radius:12px; padding:18px; border:1px solid rgba(255,255,255,0.03); box-shadow:0 8px 30px rgba(2,8,25,0.55) }
+        .chart-title { font-size:1.1rem; font-weight:800; color:#dff6ff; margin-bottom:14px; display:flex; align-items:center; gap:10px }
+        .chart-canvas { position:relative; height:300px }
+
+        /* Loading */
+        .loading { display:inline-block; width:20px; height:20px; border:3px solid rgba(155,170,250,0.12); border-radius:50%; border-top-color:#9fb8ff; animation:spin 1s linear infinite }
+        @keyframes spin { to { transform: rotate(360deg) } }
+
+        .loading-container { display: flex; justify-content: center; align-items: center; padding: 40px; }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header-title h1 { font-size: 1.8rem; }
+            .stats-grid { grid-template-columns: 1fr; }
+            .content-grid { grid-template-columns: 1fr; }
+            .filters-grid { grid-template-columns: 1fr; }
+            table { font-size: 12px; }
+            th, td { padding: 10px; }
+            .modal-content { width: 95%; margin: 20% auto; }
+        }
+
+        /* Toast Notifications */
+        .toast { position: fixed; bottom: 20px; right: 20px; background: white; padding: 15px 20px; border-radius: 8px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2); display: flex; align-items: center; gap: 15px; animation: slideInRight 0.3s ease; z-index: 2000; }
+        @keyframes slideInRight { from { transform: translateX(400px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        .toast.success { border-left: 4px solid #11998e; }
+        .toast.error { border-left: 4px solid #eb3349; }
+        .toast.info { border-left: 4px solid #667eea; }
+
+        .no-data { text-align: center; padding: 40px; color: #999; }
+        .no-data i { font-size: 3rem; margin-bottom: 15px; opacity: 0.5; }
+
+        .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .detail-item { padding: 15px; background: #f9f9f9; border-radius: 8px; border-left: 3px solid #667eea; }
+        .detail-label { font-size: 12px; color: #999; font-weight: 600; text-transform: uppercase; margin-bottom: 5px; }
+        .detail-value { font-size: 16px; font-weight: 600; color: #333; }
+
+        .size-indicator { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 5px; }
+        .size-small { background: #11998e; }
+        .size-medium { background: #667eea; }
+        .size-large { background: #f45c43; }
+
+        /* Webcam Section Styles */
+        .webcam-section { background: rgba(255, 255, 255, 0.95); border-radius: 15px; padding: 25px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1); margin-bottom: 30px; }
+        .webcam-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px; }
+        .webcam-header h2 { font-size: 1.5rem; font-weight: 700; color: #333; display: flex; align-items: center; gap: 10px; }
+        .webcam-controls { display: flex; gap: 10px; flex-wrap: wrap; }
+        .webcam-content { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; align-items: start; }
+        .webcam-feed-container { position: relative; background: #000; border-radius: 10px; overflow: hidden; box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2); }
+        #webcamFeed { display: block !important; width: 100% !important; height: auto !important; }
+        .webcamPlaceholder { width: 100%; padding-top: 75%; background: #1a1a1a; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #999; }
+        .webcamPlaceholder i { font-size: 3rem; opacity: 0.5; }
+        .analysis-panel { background: #f9f9f9; border-radius: 10px; padding: 20px; border: 2px solid #e0e0e0; }
+        .analysis-header { font-size: 1.1rem; font-weight: 700; color: #333; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid #667eea; }
+        .live-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+        .live-stat-item { background: white; padding: 12px; border-radius: 8px; border-left: 3px solid #667eea; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05); }
+        .live-stat-label { font-size: 12px; color: #999; font-weight: 600; text-transform: uppercase; margin-bottom: 5px; }
+        .live-stat-value { font-size: 1.8rem; font-weight: 700; color: #667eea; }
+        .analysis-tabs { display: flex; gap: 5px; margin-bottom: 15px; border-bottom: 2px solid #e0e0e0; }
+        .analysis-tab-btn { padding: 10px 15px; background: none; border: none; cursor: pointer; font-weight: 600; color: #999; border-bottom: 3px solid transparent; transition: all 0.3s ease; }
+        .analysis-tab-btn.active { color: #667eea; border-bottom-color: #667eea; }
+        .analysis-tab-btn:hover { color: #667eea; }
+        .analysis-tab-content { display: none; padding: 10px 0; }
+        .analysis-tab-content.active { display: block; }
+        .analysis-content-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+        .analysis-item { background: white; padding: 10px; border-radius: 6px; border: 1px solid #e0e0e0; }
+        .analysis-item label { display: block; font-size: 11px; color: #999; font-weight: 600; text-transform: uppercase; margin-bottom: 5px; }
+        .analysis-value { font-size: 1.2rem; font-weight: 700; color: #667eea; }
+        .distribution-charts { display: grid; grid-template-columns: 1fr; gap: 15px; }
+        .small-chart { background: white; padding: 12px; border-radius: 6px; border: 1px solid #e0e0e0; }
+        .distribution-bar { display: flex; align-items: center; margin: 8px 0; font-size: 12px; }
+        .distribution-label { min-width: 80px; font-weight: 600; color: #666; }
+        .distribution-bar-fill { flex: 1; height: 20px; background: linear-gradient(90deg, #667eea 0%, #764ba2 100%); margin: 0 10px; border-radius: 3px; position: relative; }
+        .distribution-value { min-width: 40px; text-align: right; color: #333; font-weight: 600; }
+        @media (max-width: 1200px) { .webcam-content { grid-template-columns: 1fr; } .analysis-content-grid { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 768px) { .webcam-section { padding: 15px; } .analysis-content-grid { grid-template-columns: 1fr; } .live-stats { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="header-title">
+                <i class="fas fa-microscope icon"></i>
+                <h1>FluoTrack</h1>
+            </div>
+            <div class="header-actions">
+                <button class="btn btn-secondary" onclick="exportData()">
+                    <i class="fas fa-download"></i> Export Data
+                </button>
+                <button class="btn btn-secondary" onclick="logout()" title="Log out">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </button>
+            </div>
+        </div>
+
+        <!-- Webcam Live Analysis Section -->
+        <div class="webcam-section">
+            <div class="webcam-header">
+                <h2><i class="fas fa-video"></i> Live Webcam Analysis</h2>
+                <div class="webcam-controls">
+                    <button class="btn btn-success" id="startWebcamBtn" onclick="startWebcam()">
+                        <i class="fas fa-play"></i> Start Webcam
+                    </button>
+                    <button class="btn btn-danger" id="stopWebcamBtn" onclick="stopWebcam()" style="display:none;">
+                        <i class="fas fa-stop"></i> Stop Webcam
+                    </button>
+                    <button class="btn btn-primary" id="saveParticlesBtn" onclick="saveDetectedParticles()" style="display:none;">
+                        <i class="fas fa-save"></i> Save Particles
+                    </button>
+                </div>
+            </div>
+
+            <div class="webcam-content">
+                <div class="webcam-feed-container">
+                    <img id="webcamFeed" src="" alt="Webcam Feed" style="display:none; width: 100%; height: auto; border-radius: 10px; background: #000;">
+                    <div id="webcamPlaceholder" class="webcamPlaceholder">
+                        <i class="fas fa-camera"></i>
+                    </div>
+                </div>
+
+                <div class="analysis-panel">
+                    <div class="analysis-header">Real-Time Particle Analysis</div>
+                    
+                    <div class="live-stats">
+                        <div class="live-stat-item">
+                            <div class="live-stat-label">Particles Detected</div>
+                            <div class="live-stat-value" id="liveParticleCount">0</div>
+                        </div>
+                        <div class="live-stat-item">
+                            <div class="live-stat-label">FPS</div>
+                            <div class="live-stat-value" id="liveFPS">0</div>
+                        </div>
+                        <div class="live-stat-item">
+                            <div class="live-stat-label">Avg Size</div>
+                            <div class="live-stat-value" id="liveAvgSize">0</div>
+                        </div>
+                        <div class="live-stat-item">
+                            <div class="live-stat-label">Total Area</div>
+                            <div class="live-stat-value" id="liveTotalArea">0</div>
+                        </div>
+                    </div>
+
+                    <div class="analysis-tabs">
+                        <button class="analysis-tab-btn active" onclick="switchAnalysisTab('quantification')">Quantification</button>
+                        <button class="analysis-tab-btn" onclick="switchAnalysisTab('particles')">Particles</button>
+                        <button class="analysis-tab-btn" onclick="switchAnalysisTab('distribution')">Distribution</button>
+                    </div>
+
+                    <div class="analysis-tab-content active" id="quantificationTab">
+                        <div class="analysis-content-grid">
+                            <div class="analysis-item">
+                                <label>Total Count</label>
+                                <div class="analysis-value" id="quantCount">0</div>
+                            </div>
+                            <div class="analysis-item">
+                                <label>Avg Length</label>
+                                <div class="analysis-value" id="quantAvgLength">0 px</div>
+                            </div>
+                            <div class="analysis-item">
+                                <label>Avg Width</label>
+                                <div class="analysis-value" id="quantAvgWidth">0 px</div>
+                            </div>
+                            <div class="analysis-item">
+                                <label>Avg Aspect Ratio</label>
+                                <div class="analysis-value" id="quantAspectRatio">0</div>
+                            </div>
+                            <div class="analysis-item">
+                                <label>Avg Circularity</label>
+                                <div class="analysis-value" id="quantCircularity">0</div>
+                            </div>
+                            <div class="analysis-item">
+                                <label>Min Size</label>
+                                <div class="analysis-value" id="quantMinSize">0 px²</div>
+                            </div>
+                            <div class="analysis-item">
+                                <label>Max Size</label>
+                                <div class="analysis-value" id="quantMaxSize">0 px²</div>
+                            </div>
+                            <div class="analysis-item">
+                                <label>Median Size</label>
+                                <div class="analysis-value" id="quantMedianSize">0 px²</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="analysis-tab-content" id="particlesTab">
+                        <div id="particlesList" style="max-height: 300px; overflow-y: auto;">
+                            <div class="no-data"><i class="fas fa-droplet"></i><p>No particles detected</p></div>
+                        </div>
+                    </div>
+
+                    <div class="analysis-tab-content" id="distributionTab">
+                        <div class="distribution-charts">
+                            <div class="small-chart">
+                                <strong>Size Distribution</strong>
+                                <div id="sizeDistribution" style="font-size: 12px; margin-top: 10px;"></div>
+                            </div>
+                            <div class="small-chart">
+                                <strong>Shape Distribution</strong>
+                                <div id="shapeDistribution" style="font-size: 12px; margin-top: 10px;"></div>
+                            </div>
+                            <div class="small-chart">
+                                <strong>Roughness</strong>
+                                <div id="roughnessDistribution" style="font-size: 12px; margin-top: 10px;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistics Cards -->
+        <div class="stats-grid">
+            <div class="stat-card info">
+                <i class="fas fa-droplet stat-icon"></i>
+                <div class="stat-label">Total Particles</div>
+                <div class="stat-value" id="totalParticles">0</div>
+                <div class="stat-subtitle">Detected microplastics</div>
+            </div>
+            <div class="stat-card info">
+                <i class="fas fa-ruler stat-icon"></i>
+                <div class="stat-label">Average Size</div>
+                <div class="stat-value" id="avgSize">0</div>
+                <div class="stat-subtitle">Micrometers</div>
+            </div>
+            <div class="stat-card medium">
+                <i class="fas fa-flask stat-icon"></i>
+                <div class="stat-label">Avg Concentration</div>
+                <div class="stat-value" id="avgConcentration">0</div>
+                <div class="stat-subtitle">Particles per unit</div>
+            </div>
+            <div class="stat-card high">
+                <i class="fas fa-exclamation-triangle stat-icon"></i>
+                <div class="stat-label">High Risk</div>
+                <div class="stat-value" id="highRisk">0</div>
+                <div class="stat-subtitle">Particles requiring attention</div>
+            </div>
+            <div class="stat-card critical">
+                <i class="fas fa-skull-crossbones stat-icon"></i>
+                <div class="stat-label">Critical Level</div>
+                <div class="stat-value" id="criticalLevel">0</div>
+                <div class="stat-subtitle">Dangerous particles</div>
+            </div>
+            <div class="stat-card info">
+                <i class="fas fa-certificate stat-icon"></i>
+                <div class="stat-label">Avg Confidence</div>
+                <div class="stat-value" id="avgConfidence">0%</div>
+                <div class="stat-subtitle">Detection accuracy</div>
+            </div>
+        </div>
+
+        <!-- Charts Section -->
+        <div class="content-grid">
+            <div class="chart-container">
+                <h3 class="chart-title">
+                    <i class="fas fa-chart-pie"></i> Shape Distribution
+                </h3>
+                <div class="chart-canvas">
+                    <canvas id="shapeChart"></canvas>
+                </div>
+            </div>
+            <div class="chart-container">
+                <h3 class="chart-title">
+                    <i class="fas fa-chart-pie"></i> Surface Texture Distribution
+                </h3>
+                <div class="chart-canvas">
+                    <canvas id="polymerChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sample Type Distribution -->
+        <div class="chart-container" style="margin-bottom: 30px;">
+            <h3 class="chart-title">
+                <i class="fas fa-chart-bar"></i> Sample Type Distribution
+            </h3>
+            <div class="chart-canvas" style="height: 250px;">
+                <canvas id="sampleTypeChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==================== STATE MANAGEMENT ====================
+        let allStatistics = {};
+        let charts = {};
+        let webcamActive = false;
+        let webcamUpdateInterval = null;
+
+        // ==================== INITIALIZATION ====================
+        document.addEventListener('DOMContentLoaded', () => {
+            setupCharts();
+            updateStatisticsCards();
+            updateCharts();
+            // Auto-start webcam on page load
+            setTimeout(() => {
+                startWebcam();
+            }, 500);
+        });
+
+        // ==================== WEBCAM FUNCTIONS ====================
+        async function startWebcam() {
+            try {
+                const response = await fetch('/api/webcam/start', { method: 'POST' });
+                if (!response.ok) throw new Error('Failed to start webcam');
+                webcamActive = true;
+                document.getElementById('startWebcamBtn').style.display = 'none';
+                document.getElementById('stopWebcamBtn').style.display = 'flex';
+                document.getElementById('saveParticlesBtn').style.display = 'flex';
+                document.getElementById('webcamPlaceholder').style.display = 'none';
+                document.getElementById('webcamFeed').style.display = 'block';
+                updateWebcamFeed();
+                webcamUpdateInterval = setInterval(updateWebcamFeed, 100);
+                showToast('Webcam started successfully', 'success');
+            } catch (error) {
+                console.error('Error starting webcam:', error);
+                showToast('Failed to start webcam', 'error');
+            }
+        }
+
+        async function stopWebcam() {
+            try {
+                const response = await fetch('/api/webcam/stop', { method: 'POST' });
+                if (!response.ok) throw new Error('Failed to stop webcam');
+                webcamActive = false;
+                document.getElementById('startWebcamBtn').style.display = 'flex';
+                document.getElementById('stopWebcamBtn').style.display = 'none';
+                document.getElementById('saveParticlesBtn').style.display = 'none';
+                document.getElementById('webcamFeed').style.display = 'none';
+                document.getElementById('webcamPlaceholder').style.display = 'flex';
+                if (webcamUpdateInterval) {
+                    clearInterval(webcamUpdateInterval);
+                    webcamUpdateInterval = null;
+                }
+                showToast('Webcam stopped', 'info');
+            } catch (error) {
+                console.error('Error stopping webcam:', error);
+                showToast('Failed to stop webcam', 'error');
+            }
+        }
+        
+        function logout() {
+            window.location.href = '/logout';
+        }
+
+        async function updateWebcamFeed() {
+            if (!webcamActive) return;
+            try {
+                const frameResponse = await fetch('/api/webcam/frame/base64');
+                if (frameResponse.ok) {
+                    const frameData = await frameResponse.json();
+                    const webcamFeed = document.getElementById('webcamFeed');
+                    webcamFeed.src = `data:image/jpeg;base64,${frameData.frame}`;
+                }
+                const particlesResponse = await fetch('/api/particles/live');
+                if (particlesResponse.ok) {
+                    const data = await particlesResponse.json();
+                    updateLiveAnalysis(data);
+                }
+            } catch (error) {
+                console.error('Error updating webcam:', error);
+            }
+        }
+
+        function updateLiveAnalysis(data) {
+            document.getElementById('liveParticleCount').textContent = data.count;
+            if (data.quantification) {
+                const q = data.quantification;
+                document.getElementById('liveAvgSize').textContent = q.average_size ? q.average_size.toFixed(0) : '0';
+                document.getElementById('liveTotalArea').textContent = q.total_area ? q.total_area.toFixed(0) : '0';
+                document.getElementById('quantCount').textContent = q.count;
+                document.getElementById('quantAvgLength').textContent = q.average_length ? q.average_length.toFixed(1) : '0' + ' px';
+                document.getElementById('quantAvgWidth').textContent = q.average_width ? q.average_width.toFixed(1) : '0' + ' px';
+                document.getElementById('quantAspectRatio').textContent = q.average_aspect_ratio ? q.average_aspect_ratio.toFixed(2) : '0';
+                document.getElementById('quantCircularity').textContent = q.average_circularity ? q.average_circularity.toFixed(3) : '0';
+                document.getElementById('quantMinSize').textContent = q.min_size ? q.min_size.toFixed(0) : '0' + ' px²';
+                document.getElementById('quantMaxSize').textContent = q.max_size ? q.max_size.toFixed(0) : '0' + ' px²';
+                document.getElementById('quantMedianSize').textContent = q.median_size ? q.median_size.toFixed(0) : '0' + ' px²';
+                updateDistributionDisplay(q);
+            }
+            updateParticlesList(data.particles);
+            updateMainStatsFromLiveData(data);
+            updateChartsFromLiveData(data.particles);
+            fetch('/api/webcam/status').then(r => r.json()).then(status => {
+                document.getElementById('liveFPS').textContent = status.fps.toFixed(1);
+            });
+        }
+
+        function updateParticlesList(particles) {
+            const list = document.getElementById('particlesList');
+            if (!particles || particles.length === 0) {
+                list.innerHTML = '<div class="no-data"><i class="fas fa-droplet"></i><p>No particles detected</p></div>';
+                return;
+            }
+            let html = '<div style="font-size: 12px;">';
+            particles.slice(0, 10).forEach((p, idx) => {
+                html += `<div style="padding: 8px; background: white; margin-bottom: 5px; border-radius: 4px; border-left: 3px solid #667eea;">
+                    <strong>#${idx + 1}</strong> | Size: ${p.area.toFixed(0)} px² | Shape: ${p.shape_type} | AR: ${p.aspect_ratio.toFixed(2)}
+                </div>`;
+            });
+            html += '</div>';
+            list.innerHTML = html;
+        }
+
+        function updateDistributionDisplay(q) {
+            let sizeHtml = '';
+            const sizeDist = q.size_distribution || {};
+            const sizeTotal = Object.values(sizeDist).reduce((a, b) => a + b, 0) || 1;
+            for (const [size, count] of Object.entries(sizeDist)) {
+                const percent = (count / sizeTotal) * 100;
+                sizeHtml += `<div class="distribution-bar">
+                    <div class="distribution-label">${size}</div>
+                    <div class="distribution-bar-fill" style="width: ${percent}%"></div>
+                    <div class="distribution-value">${count}</div>
+                </div>`;
+            }
+            document.getElementById('sizeDistribution').innerHTML = sizeHtml;
+            
+            let shapeHtml = '';
+            const shapeDist = q.shape_distribution || {};
+            const shapeTotal = Object.values(shapeDist).reduce((a, b) => a + b, 0) || 1;
+            for (const [shape, count] of Object.entries(shapeDist)) {
+                const percent = (count / shapeTotal) * 100;
+                shapeHtml += `<div class="distribution-bar">
+                    <div class="distribution-label">${shape}</div>
+                    <div class="distribution-bar-fill" style="width: ${percent}%"></div>
+                    <div class="distribution-value">${count}</div>
+                </div>`;
+            }
+            document.getElementById('shapeDistribution').innerHTML = shapeHtml;
+            
+            let roughHtml = '';
+            const roughDist = q.roughness_distribution || {};
+            const roughTotal = Object.values(roughDist).reduce((a, b) => a + b, 0) || 1;
+            for (const [rough, count] of Object.entries(roughDist)) {
+                const percent = (count / roughTotal) * 100;
+                roughHtml += `<div class="distribution-bar">
+                    <div class="distribution-label">${rough}</div>
+                    <div class="distribution-bar-fill" style="width: ${percent}%"></div>
+                    <div class="distribution-value">${count}</div>
+                </div>`;
+            }
+            document.getElementById('roughnessDistribution').innerHTML = roughHtml;
+        }
+
+        function switchAnalysisTab(tabName) {
+            document.getElementById('quantificationTab').classList.remove('active');
+            document.getElementById('particlesTab').classList.remove('active');
+            document.getElementById('distributionTab').classList.remove('active');
+            document.querySelectorAll('.analysis-tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(tabName + 'Tab').classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        async function saveDetectedParticles() {
+            try {
+                const response = await fetch('/api/particles/save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        location: 'Live Webcam Feed',
+                        sample_type: 'live_analysis',
+                        polymer_type: 'Unknown'
+                    })
+                });
+                if (!response.ok) throw new Error('Failed to save particles');
+                const result = await response.json();
+                showToast(`Saved ${result.count} particles to database`, 'success');
+            } catch (error) {
+                console.error('Error saving particles:', error);
+                showToast('Failed to save particles', 'error');
+            }
+        }
+
+        async function loadStatistics() {
+            try {
+                const response = await fetch('/api/statistics');
+                allStatistics = await response.json();
+                updateStatisticsCards();
+                updateCharts();
+            } catch (error) {
+                console.error('Error loading statistics:', error);
+                showToast('Error loading statistics', 'error');
+            }
+        }
+
+        async function exportData() {
+            try {
+                const response = await fetch('/api/export/live/csv');
+                if (!response.ok) throw new Error("Failed");
+                const csv = await response.text();
+                const blob = new Blob([csv], { type: 'text/csv' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'live_microplastics_session.csv';
+                a.click();
+                showToast('Live session exported successfully', 'success');
+            } catch (e) {
+                console.error(e);
+                showToast('Live CSV export failed', 'error');
+            }
+        }
+
+        function updateStatisticsCards() {
+            document.getElementById('totalParticles').textContent = allStatistics.total_particles || '0';
+            document.getElementById('avgSize').textContent = (allStatistics.average_size || 0).toFixed(2);
+            document.getElementById('avgConcentration').textContent = (allStatistics.average_concentration || 0).toFixed(2);
+            document.getElementById('highRisk').textContent = allStatistics.high_risk_particles || '0';
+            document.getElementById('criticalLevel').textContent = allStatistics.critical_particles || '0';
+            document.getElementById('avgConfidence').textContent = (allStatistics.average_confidence || 0).toFixed(1) + '%';
+        }
+
+        function updateMainStatsFromLiveData(data) {
+            if (!data || !data.particles) return;
+            const particles = data.particles;
+            allStatistics.total_particles = data.count || 0;
+            if (particles.length > 0) {
+                const sizes = particles.map(p => p.area || 0);
+                allStatistics.average_size = sizes.reduce((a, b) => a + b, 0) / sizes.length;
+                const highRisk = particles.filter(p => p.risk_level === 'high' || p.risk_level === 'critical').length;
+                const critical = particles.filter(p => p.risk_level === 'critical').length;
+                allStatistics.high_risk_particles = highRisk;
+                allStatistics.critical_particles = critical;
+                const confidenceScores = particles.filter(p => p.confidence_score).map(p => p.confidence_score);
+                allStatistics.average_confidence = confidenceScores.length > 0 ? confidenceScores.reduce((a, b) => a + b, 0) / confidenceScores.length : 0;
+            } else {
+                allStatistics.average_size = 0;
+                allStatistics.high_risk_particles = 0;
+                allStatistics.critical_particles = 0;
+                allStatistics.average_confidence = 0;
+            }
+            updateStatisticsCards();
+        }
+
+        function setupCharts() {
+            const chartOptions = {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        labels: {
+                            font: { size: 12 },
+                            padding: 15,
+                            usePointStyle: true
+                        }
+                    }
+                }
+            };
+
+            charts.shape = new Chart(document.getElementById('shapeChart'), {
+                type: 'doughnut',
+                data: { labels: [], datasets: [{ data: [], backgroundColor: ['#667eea', '#764ba2', '#f45c43', '#11998e'] }] },
+                options: chartOptions
+            });
+
+            charts.polymer = new Chart(document.getElementById('polymerChart'), {
+                type: 'doughnut',
+                data: { labels: [], datasets: [{ data: [], backgroundColor: ['#667eea', '#764ba2', '#f45c43', '#11998e', '#ffa502', '#eb3349', '#38ef7d'] }] },
+                options: chartOptions
+            });
+
+            charts.sampleType = new Chart(document.getElementById('sampleTypeChart'), {
+                type: 'bar',
+                data: { labels: [], datasets: [{ label: 'Count', data: [], backgroundColor: '#667eea' }] },
+                options: {
+                    ...chartOptions,
+                    scales: {
+                        y: { beginAtZero: true, ticks: { stepSize: 1 } }
+                    }
+                }
+            });
+        }
+
+        function updateCharts() {
+            if (!charts.shape) return;
+            const shapeLabels = Object.keys(allStatistics.shape_distribution || {});
+            const shapeData = Object.values(allStatistics.shape_distribution || {});
+            charts.shape.data.labels = shapeLabels.length > 0 ? shapeLabels : ['No Data'];
+            charts.shape.data.datasets[0].data = shapeData.length > 0 ? shapeData : [0];
+            charts.shape.update();
+
+            const polymerLabels = Object.keys(allStatistics.polymer_distribution || {});
+            const polymerData = Object.values(allStatistics.polymer_distribution || {});
+            charts.polymer.data.labels = polymerLabels.length > 0 ? polymerLabels : ['No Data'];
+            charts.polymer.data.datasets[0].data = polymerData.length > 0 ? polymerData : [0];
+            charts.polymer.update();
+
+            const sampleTypeLabels = Object.keys(allStatistics.sample_type_distribution || {});
+            const sampleTypeData = Object.values(allStatistics.sample_type_distribution || {});
+            charts.sampleType.data.labels = sampleTypeLabels.length > 0 ? sampleTypeLabels.map(l => l.charAt(0).toUpperCase() + l.slice(1)) : ['No Data'];
+            charts.sampleType.data.datasets[0].data = sampleTypeData.length > 0 ? sampleTypeData : [0];
+            charts.sampleType.update();
+        }
+
+        function updateChartsFromLiveData(particles) {
+            if (!particles || particles.length === 0) {
+                allStatistics.shape_distribution = {};
+                allStatistics.polymer_distribution = {};
+                allStatistics.sample_type_distribution = {};
+                updateCharts();
+                return;
+            }
+
+            allStatistics.shape_distribution = {};
+            particles.forEach(p => {
+                const shape = p.shape_type || 'unknown';
+                allStatistics.shape_distribution[shape] = (allStatistics.shape_distribution[shape] || 0) + 1;
+            });
+
+            allStatistics.polymer_distribution = {};
+            particles.forEach(p => {
+                let roughness = 'smooth';
+                const stdIntensity = p.std_intensity || 0;
+                if (stdIntensity >= 50) {
+                    roughness = 'weathered';
+                } else if (stdIntensity >= 20) {
+                    roughness = 'rough';
+                }
+                allStatistics.polymer_distribution[roughness] = (allStatistics.polymer_distribution[roughness] || 0) + 1;
+            });
+
+            allStatistics.sample_type_distribution = {};
+            particles.forEach(p => {
+                const sampleType = p.sample_type || 'unknown';
+                allStatistics.sample_type_distribution[sampleType] = (allStatistics.sample_type_distribution[sampleType] || 0) + 1;
+            });
+
+            updateCharts();
+        }
+
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i><span>${message}</span>`;
+            document.body.appendChild(toast);
+            setTimeout(() => {
+                toast.remove();
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Login - FluoTrack</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root{
+      --bg-1: #05060a;
+      --bg-2: #071427;
+      --panel: rgba(255,255,255,0.03);
+      --panel-2: rgba(255,255,255,0.02);
+      --glass-border: rgba(255,255,255,0.06);
+      --soft-border: rgba(255,255,255,0.03);
+      --accent-cyan: #00e5ff;
+      --accent-violet: #8a6cff;
+      --accent-teal: #2fe7b6;
+      --muted: #9aa6b2;
+      --text-main: #e8f4ff;
+    }
+    html,body{
+      height:100%;
+      margin:0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      color:var(--text-main);
+      background:
+        radial-gradient(600px 300px at 10% 10%, rgba(138,108,255,0.08), transparent 8%),
+        radial-gradient(700px 350px at 90% 90%, rgba(0,229,255,0.06), transparent 8%),
+        radial-gradient(500px 250px at 50% 50%, rgba(47,231,182,0.04), transparent 8%),
+        linear-gradient(180deg, var(--bg-1), var(--bg-2));
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+      -webkit-tap-highlight-color: transparent;
+      overflow-x:hidden;
+      position: relative;
+    }
+    .form-input {
+      background: var(--panel);
+      border: 1px solid var(--glass-border);
+      border-radius: 8px;
+      color: var(--text-main);
+    }
+    .form-input:focus {
+      outline: none;
+      border-color: var(--accent-cyan);
+      box-shadow: 0 0 0 2px rgba(0,229,255,0.2);
+    }
+  </style>
+</head>
+<body class="flex items-center justify-center min-h-screen">
+  <div class="w-full max-w-md p-8 bg-black/20 backdrop-blur-md rounded-2xl border border-white/10">
+    <div class="text-center mb-8">
+      <h1 class="text-3xl font-bold mb-2">Welcome Back</h1>
+      <p class="text-gray-400">Sign in to your FluoTrack account</p>
+    </div>
+    <form id="login-form" class="space-y-6">
+      <div>
+        <label class="block text-sm font-medium mb-2">Email</label>
+        <input type="email" id="login-email" required class="form-input w-full p-3">
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-2">Password</label>
+        <input type="password" id="login-password" required class="form-input w-full p-3">
+      </div>
+      <div id="login-error" class="text-red-300 text-sm hidden">Invalid email or password</div>
+      <button type="submit" class="w-full py-3 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-xl font-semibold hover:from-cyan-600 hover:to-blue-600 transition">
+        Sign In
+      </button>
+    </form>
+    <div class="text-center mt-6">
+      <p class="text-sm text-gray-400">
+        Don't have an account?
+        <a href="/signup" class="text-cyan-400 hover:text-cyan-300">Sign up</a>
+      </p>
+    </div>
+    <div class="text-center mt-4">
+      <a href="/" class="text-gray-500 hover:text-gray-400 text-sm">← Back to Home</a>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('login-email').value;
+      const password = document.getElementById('login-password').value;
+
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        window.location.href = '/dashboard';
+      } else {
+        document.getElementById('login-error').classList.remove('hidden');
+        document.getElementById('login-error').textContent = data.message || 'Login failed';
+      }
+    });
+  </script>
+</body>
+</html>

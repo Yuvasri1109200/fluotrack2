@@ -1,0 +1,4 @@
+names: ['microplastic']
+nc: 1
+train: images/train_processed
+val: images/train_processed
