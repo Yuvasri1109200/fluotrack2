@@ -147,6 +147,112 @@
         .distribution-value { min-width: 40px; text-align: right; color: #333; font-weight: 600; }
         @media (max-width: 1200px) { .webcam-content { grid-template-columns: 1fr; } .analysis-content-grid { grid-template-columns: repeat(2, 1fr); } }
         @media (max-width: 768px) { .webcam-section { padding: 15px; } .analysis-content-grid { grid-template-columns: 1fr; } .live-stats { grid-template-columns: 1fr; } }
+
+        /* ================= FILTRATION SECTION ================= */
+.filtration-section {
+    margin: 60px 0;
+    padding: 40px 30px;
+    background: radial-gradient(circle at top, rgba(102,126,234,0.15), transparent 60%),
+                linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+    border-radius: 18px;
+    border: 1px solid rgba(255,255,255,0.05);
+    box-shadow: 0 30px 80px rgba(0,0,0,0.4);
+    text-align: center;
+}
+
+.filtration-title {
+    font-size: 2rem;
+    font-weight: 800;
+    color: #eaf4ff;
+    margin-bottom: 10px;
+}
+
+.filtration-title i {
+    color: #9fb8ff;
+    margin-right: 10px;
+}
+
+.filtration-subtitle {
+    color: #bcd6ff;
+    font-size: 14px;
+    margin-bottom: 40px;
+}
+
+/* Cards Layout */
+.filtration-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 25px;
+    perspective: 1200px;
+}
+
+/* 3D Card */
+.filtration-card {
+    height: 260px;
+    perspective: 1200px;
+}
+
+.card-inner {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    transform-style: preserve-3d;
+    transition: transform 0.8s cubic-bezier(.4,.2,.2,1);
+}
+
+.filtration-card:hover .card-inner {
+    transform: rotateY(180deg) scale(1.03);
+}
+
+/* Front & Back */
+.card-front,
+.card-back {
+    position: absolute;
+    inset: 0;
+    border-radius: 16px;
+    backface-visibility: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 25px;
+    box-shadow: 0 15px 40px rgba(0,0,0,0.35);
+}
+
+.card-front {
+    background: linear-gradient(145deg, #667eea, #764ba2);
+    color: #fff;
+}
+
+.card-front i {
+    font-size: 2.8rem;
+    margin-bottom: 15px;
+    filter: drop-shadow(0 10px 20px rgba(0,0,0,0.4));
+}
+
+.card-front h3 {
+    font-size: 1.2rem;
+    font-weight: 700;
+}
+
+.card-back {
+    background: linear-gradient(145deg, #0f1c3f, #09142d);
+    color: #dff3ff;
+    transform: rotateY(180deg);
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+/* Floating animation */
+.filtration-card {
+    animation: floatCard 6s ease-in-out infinite;
+}
+
+@keyframes floatCard {
+    0% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+    100% { transform: translateY(0); }
+}
     </style>
 </head>
 <body>
@@ -282,6 +388,82 @@
                 </div>
             </div>
         </div>
+
+        <!-- Microplastic Filtration Knowledge Section -->
+<div class="filtration-section">
+    <h2 class="filtration-title">
+        <i class="fas fa-filter"></i> How Microplastics Are Filtered
+    </h2>
+    <p class="filtration-subtitle">
+        From raw samples to isolated particles — understand the science behind microplastic filtration.
+    </p>
+
+    <div class="filtration-cards">
+        <!-- Card 1 -->
+        <div class="filtration-card">
+            <div class="card-inner">
+                <div class="card-front">
+                    <i class="fas fa-water"></i>
+                    <h3>Sample Collection: 1.5 Litres</h3>
+                </div>
+                <div class="card-back">
+                    <p>
+                        Water, soil, or biological samples are collected under contamination-free conditions.
+                        Glass containers are preferred to avoid plastic interference.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card 2 -->
+        <div class="filtration-card">
+            <div class="card-inner">
+                <div class="card-front">
+                    <i class="fas fa-layer-group"></i>
+                    <h3>Density Separation: Activated when Total Particles ≥ 50</h3>
+                </div>
+                <div class="card-back">
+                    <p>
+                        A dense salt solution (NaCl / ZnCl₂) allows lighter microplastics to float while heavier
+                        particles settle.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card 3 -->
+        <div class="filtration-card">
+            <div class="card-inner">
+                <div class="card-front">
+                    <i class="fas fa-filter"></i>
+                    <h3>Direct Membrane Filtration: Activated when Total Particles ≤ 20</h3>
+                </div>
+                <div class="card-back">
+                    <p>
+                        The floating membranous layer is passed through micro-filters (5–300 μm) to physically trap
+                        microplastic particles.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card 4 -->
+        <div class="filtration-card">
+            <div class="card-inner">
+                <div class="card-front">
+                    <i class="fas fa-microscope"></i>
+                    <h3>Fluorescence Detection: Activated when Total Particles ≥ 200</h3>
+                </div>
+                <div class="card-back">
+                    <p>
+                        Fluorescent dyes like Nile Red bind to plastic polymers, making microplastics glow under UV or blue light
+                        for accurate detection.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
         <!-- Statistics Cards -->
         <div class="stats-grid">

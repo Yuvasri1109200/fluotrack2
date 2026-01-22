@@ -912,8 +912,10 @@ def get_particles_statistics():
 
 # ==================== INITIALIZATION ====================
 
-if __name__ == '__main__':
+if __name__ == "__main__":
+    import os
     with app.app_context():
         db.create_all()
-    
-    app.run(host='0.0.0.0', debug=True, port=5000)
+
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
